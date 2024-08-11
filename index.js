@@ -1,7 +1,26 @@
-const app = require('./app')
-const config = require('./utils/config')
-const logger = require('./utils/logger')
+const express = require('express')
+const app = express()
 
-app.listen(config.PORT, () => {
-  logger.info(`Server running on port ${config.PORT}`)
-})
+const { PORT } = require('./util/config')
+const { connectToDatabase } = require('./util/db')
+
+const notesRouter = require('./controllers/blogs')
+const usersRouter = require('./controllers/users')
+const loginRouter = require('./controllers/login')
+const authorRouter = require('./controllers/authors')
+
+app.use(express.json())
+
+app.use('/api/blogs', notesRouter)
+app.use('/api/users', usersRouter)
+app.use('/api/login', loginRouter)
+app.use('/api/authors', authorRouter)
+
+const start = async () => {
+  await connectToDatabase()
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`)
+  })
+}
+
+start()

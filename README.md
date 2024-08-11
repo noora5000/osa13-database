@@ -13,7 +13,7 @@ docker run -d \
   postgres
   ```
 Create a table inside the Postgres container (e.g. command line `docker exec -it bloglist-postgres psql -U postgres postgres`).
-Command to create the table for bloglist:
+The command to create the table for bloglist:
 ```
 CREATE TABLE blogs (
     id SERIAL PRIMARY KEY,
@@ -21,6 +21,14 @@ CREATE TABLE blogs (
     author TEXT,
     url TEXT NOT NULL,
     likes INTEGER DEFAULT 0
+);
+```
+The command to create the table for users:
+```
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username TEXT NOT NULL,
+    name TEXT NOT NULL UNIQUE,
 );
 ```
 
