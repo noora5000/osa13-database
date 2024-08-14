@@ -1,34 +1,29 @@
 const blogsRouter = require('express').Router()
 const { Blog, User } = require('../models')
-const jwt = require('jsonwebtoken')
-const { SECRET } = require('../util/config')
 const { Op, literal } = require('sequelize')
+const { userExtractor, requireLogin } = require('../util/middleware')
 
-// Middlewares
+// Middleware to find a blog by its primary key
 const blogFinder = async (req, res, next) => {
-  req.blog = await Blog.findByPk(req.params.id)
-  next()
+  try {
+    const blog = await Blog.findByPk(req.params.id)
+    console.log('blog:', blog)
+    if (!blog) {
+      const error = new Error('blog not found')
+      error.name = 'BlogNotFound'
+      throw error
+    }
+    req.blog = blog
+    next()
+  } catch (error) {
+    next(error) // Pass errors to the error handler middleware
+  }
 }
 
-const tokenExtractor = (req, res, next) => {
-  const authorization = req.get('authorization')
-  if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
-    try {
-      req.decodedToken = jwt.verify(authorization.substring(7), SECRET)
-      console.log('decoded token id', req.decodedToken)
-    } catch (error){
-      console.log(error)
-      return res.status(401).json({ error: 'token invalid' })
-    }
-  } else {
-    return res.status(401).json({ error: 'token missing' })
-  }
-  next()
-}
-// Routes
+// Route to get all blogs with optional search functionality
 blogsRouter.get('/', async (req, res) => {
   const where = {}
-
+  // search functionality:
   if (req.query.search) {
     where[Op.or] = [
       { title: { [Op.iLike]: `%${req.query.search}%` } },
@@ -36,64 +31,59 @@ blogsRouter.get('/', async (req, res) => {
       { url: { [Op.iLike]: `%${req.query.search}%` } }
     ]
   }
-
+  // Fetch blogs with associated user data and order by likes
   const blogs = await Blog.findAll({
     attributes: { exclude: ['userId'] },
-    include: {
-      model: User,
-      attributes: ['name']
-    },
-    where,
-    // Will order by max age descending
-    order: literal('likes DESC')
+    include: [
+      {
+        model: User,
+        as: 'user',
+        attributes: ['name']  // Include user's name
+      }
+    ],
+    where, // add search functionality
+    order: literal('likes DESC') // order by the number of likes, descending
   })
-  console.log(JSON.stringify(blogs, null, 2))
   res.json(blogs)
-
 })
 
-blogsRouter.post('/', tokenExtractor, async (req, res) => {
+// Route to create a new blog post
+blogsRouter.post('/', userExtractor, requireLogin, async (req, res, next) => {
   try{
-    //const user = await User.findOne()
-    const user = await User.findByPk(req.decodedToken.id)
-    const blog = await Blog.create({ ...req.body, userId: user.id })
-    console.log(JSON.stringify(blog, null, 2))
+    const blog = await Blog.create({ ...req.body, userId: req.user.id })
     res.json(blog)
   } catch (error){
-    console.log(req.body)
-    return res.status(400).json({ error })
+    next(error)
   }
 })
 
-blogsRouter.delete('/:id', blogFinder, tokenExtractor,  async (req, res) => {
-  const creatorId = req.blog.userId
-  const user = await User.findByPk(req.decodedToken.id)
-  if(creatorId === user.id){
-    req.blog.destroy()
-    return res.status(204).json({ message: 'deleted' })
-  } return res.status(401)
-})
-
-blogsRouter.get('/:id', blogFinder, async (req, res) => {
-  if (req.blog) {
-    res.json(req.blog)
-  } else {
-    res.status(404).end()
-  }
-})
-
-blogsRouter.put('/:id', blogFinder, async (req, res) => {
+// Route to delete a blog post
+blogsRouter.delete('/:id', blogFinder, userExtractor, requireLogin,  async (req, res, next) => {
   try{
-    if (req.blog) {
-      req.blog.likes = req.body.likes
-      await req.blog.save()
-      res.json(req.blog)
+    const creatorId = req.blog.userId
+    if(creatorId === req.user.id){
+      req.blog.destroy()
+      return res.status(204).json({ message: 'deleted' })
     } else {
-      res.status(404).end()
+      const error = new Error('not permitted')
+      error.name = 'WrongUser'
+      throw error
     }
-  } catch (error) {
-    return res.status(400).json({ error })
+  } catch (error){
+    next(error)
   }
+})
+
+// Route to get a blog post by id
+blogsRouter.get('/:id', blogFinder, async (req, res) => {
+  res.json(req.blog)
+})
+
+// Route to update the number of likes for a blog post
+blogsRouter.put('/:id', blogFinder, async (req, res) => {
+  req.blog.likes = req.body.likes
+  await req.blog.save()
+  res.json(req.blog)
 })
 
 

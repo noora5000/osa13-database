@@ -1,9 +1,8 @@
-// const mongoose = require('mongoose')
-// const uniqueValidator = require('mongoose-unique-validator')
 const { Model, DataTypes } = require('sequelize')
 
 const { sequelize } = require('../util/db')
 
+// Define the User model
 class User extends Model {}
 
 User.init({
@@ -17,13 +16,18 @@ User.init({
     unique: true,
     allowNull: false,
     validate: {
-      isEmail: true
+      isEmail: true // Validate that the username is an email address
     }
   },
   name: {
     type: DataTypes.STRING,
     allowNull: false
   },
+  disabled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  }
 }, {
   sequelize,
   underscored: true,
@@ -32,36 +36,3 @@ User.init({
 })
 
 module.exports = User
-/*
-const userSchema = new mongoose.Schema({
-  username: {
-    type: String,
-    required: true,
-    minlength: 3,
-    unique: true
-  },
-  name: String,
-  passwordHash: String,
-  blogs: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Blog'
-    }
-  ],
-})
-userSchema.plugin(uniqueValidator)
-
-userSchema.set('toJSON', {
-  transform: (document, returnedObject) => {
-    returnedObject.id = returnedObject._id.toString()
-    delete returnedObject._id
-    delete returnedObject.__v
-    // the passwordHash should not be revealed
-    delete returnedObject.passwordHash
-  }
-})
-
-const User = mongoose.model('User', userSchema)
-
-module.exports = User
-*/

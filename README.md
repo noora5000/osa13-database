@@ -2,7 +2,7 @@ Download dependencies
 `npm install`
 
 Database works with Docker Postgres-container.
-Create and run Docker container:
+Create and run Docker container (Linux command line):
 ```
 docker run -d \
   --name bloglist-postgres \
@@ -12,26 +12,6 @@ docker run -d \
   -p 5432:5432 \
   postgres
   ```
-Create a table inside the Postgres container (e.g. command line `docker exec -it bloglist-postgres psql -U postgres postgres`).
-The command to create the table for bloglist:
-```
-CREATE TABLE blogs (
-    id SERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    author TEXT,
-    url TEXT NOT NULL,
-    likes INTEGER DEFAULT 0
-);
-```
-The command to create the table for users:
-```
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    username TEXT NOT NULL,
-    name TEXT NOT NULL UNIQUE,
-);
-```
-
   Add Docker url to .env.:
   ```
   DATABASE_URL=postgres://postgres:<yourpassword>@localhost:5432/postgres
